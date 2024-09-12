@@ -1,0 +1,7 @@
+(Pokemon as text) =>
+let
+    Source = Json.Document(Web.Contents(Endpoint & Pokemon)),
+    #"Converted to Table" = Table.FromRecords({Source}),
+    
+    in
+    #"Converted to Table"
