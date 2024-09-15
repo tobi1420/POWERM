@@ -1,4 +1,4 @@
-let
+  #"Added Custom" = Table.AddColumn(#"Removed Other Columns", "Custom", each let
     // Input string
     inputStr = [totaling],
 
@@ -24,4 +24,8 @@ let
     // Step 3: Apply unpackPart to each element in the parts list
     unpackedValues = List.Combine(List.Transform(parts, each unpackPart(_)))
 in
-    unpackedValues
+    unpackedValues),
+    #"Expanded Custom" = Table.ExpandListColumn(#"Added Custom", "Custom"),
+    #"Added Custom1" = Table.AddColumn(#"Expanded Custom", "Account No.", each if [Custom] <= 9999 then "0" & Text.From([Custom]) else Text.From([Custom]))
+in
+    #"Added Custom1"
