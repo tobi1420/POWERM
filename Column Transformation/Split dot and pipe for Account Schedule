@@ -1,0 +1,29 @@
+// Input string
+    inputStr = [totaling],
+
+    // Step 1: Split by pipe separator (|) instead of comma
+    parts = Text.Split(inputStr, "|"),
+
+    // Step 2: Function to unpack each part and remove leading zeros
+    unpackPart = (part as text) as list =>
+        if Text.Contains(part, "..") then
+            let
+                // Split by ".."
+                rangeParts = Text.Split(part, ".."),
+                // Convert to numbers (removing leading zeros automatically)
+                startValue = Number.From(Text.Trim(rangeParts{0})),
+                endValue = Number.From(Text.Trim(rangeParts{1}))
+            in
+                // Create list of numbers from startValue to endValue
+                List.Numbers(startValue, endValue - startValue + 1)
+        else
+            // Single value, convert to number (removing leading zeros)
+            { Number.From(Text.Trim(part)) },
+
+    // Step 3: Apply unpackPart to each element in the parts list
+    unpackedValues = List.Combine(List.Transform(parts, each unpackPart(_)))
+in
+    unpackedValues),
+    #"Expanded Custom" = Table.ExpandListColumn(#"Added Custom", "Custom")
+in
+    #"Expanded Custom"
