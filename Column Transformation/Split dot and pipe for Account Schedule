@@ -1,4 +1,6 @@
-  #"Added Custom" = Table.AddColumn(#"Removed Other Columns", "Custom", each let
+// Use visual Financial Reporting Matrix by Profit Base
+
+#"Added Custom" = Table.AddColumn(#"Removed Other Columns", "Custom", each let
     // Input string
     inputStr = [totaling],
 
