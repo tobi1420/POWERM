@@ -1,0 +1,17 @@
+let 
+    baseURL = #"Base URL" & #"API Version" & "me/" & "adaccounts",
+    queryparams = [
+        fields="name", 
+        access_token = #"Temp Access Token"
+    ],
+    apiURL = baseURL & "?" & Uri.BuildQueryString(queryparams),
+    response = Web.Contents(apiURL),
+    data = Json.Document(response),
+    #"Converted to Table" = Record.ToTable(data),
+    Value = #"Converted to Table"{0}[Value],
+    #"Converted to Table1" = Table.FromList(Value, Splitter.SplitByNothing(), null, null, ExtraValues.Error),
+    #"Expanded Column1" = Table.ExpandRecordColumn(#"Converted to Table1", "Column1", {"name", "id"}, {"name", "id"}),
+    #"Invoked Custom Function" = Table.AddColumn(#"Expanded Column1", "Query2", each Query2([id])),
+    #"Expanded Query2" = Table.ExpandTableColumn(#"Invoked Custom Function", "Query2", {"name", "status", "created_time", "adset_id", "campaign_id", "updated_time", "id", "ad_active_time"}, {"name.1", "status", "created_time", "adset_id", "campaign_id", "updated_time", "id.1", "ad_active_time"})
+in
+    #"Expanded Query2"
