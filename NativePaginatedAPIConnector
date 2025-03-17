@@ -18,26 +18,19 @@ let
     in
         [Data = results, NextAfter = nextLink],
 
-    // Recursive function to handle pagination, limiting to 3 pages
-    FetchLimitedPages = (after as text, accumulator as list, pageCount as number) =>
+    // Recursive function to handle pagination
+    FetchAllPages = (after as text, accumulator as list) =>
     let
-        // Check if we've already fetched 3 pages
-        result = if pageCount >= 3 then accumulator
-                 else 
-                    let
-                        page = FetchPage(after),
-                        currentData = page[Data],
-                        nextAfter = page[NextAfter],
-                        allData = List.Combine({accumulator, currentData}),
-                        // Call recursively with the updated `pageCount` and `nextAfter`
-                        nextResult = if nextAfter <> null then @FetchLimitedPages(nextAfter, allData, pageCount + 1) else allData
-                    in
-                        nextResult
+        page = FetchPage(after),
+        currentData = page[Data],
+        nextAfter = page[NextAfter],
+        allData = List.Combine({accumulator, currentData}),
+        result = if nextAfter <> null then @FetchAllPages(nextAfter, allData) else allData
     in
         result,
 
-    // Start the fetch process with an empty `after` parameter, an empty accumulator, and a page count of 0
-    allData = FetchLimitedPages("", {}, 0),
+    // Start the fetch process with an empty `after` parameter and an empty accumulator
+    allData = FetchAllPages("", {}),
 
     // Convert the list to a table
     dataTable = Table.FromList(allData, Splitter.SplitByNothing(), null, null, ExtraValues.Error)
