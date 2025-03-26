@@ -1,38 +1,76 @@
 let
-    // API credentials and initial URL setup
-    apiKey = "your_api_key",  // Replace with your actual API Key
-    baseUrl = "https://api.hubapi.com/crm/v3/objects/companies",
-    
+    // Define the properties you want to include as query parameters
+    propertiesParam = "name, city, country___region, hubspot_owner_id, app_name, client_segmentation, cst__relations_manager, closedate, days_to_close, delivery_agreement_signing_date, notes_last_contacted, hs_lead_status, lifecyclestage, numberofemployees, number_of_locations, prototype_made, sales_status, website, industry",
+
+    api_key = "XXXXX - XXXXX -XXXXX -XXXXX",  // Replace with your actual API key
+
+    // Define the base URL for the API
+    baseUrl = "https://api.hubapi.com",
+
+    // Define the relative path with necessary query parameters
+    // EXTREMELY IMPORTANT TO SHIP RelativePath before Json.Document... since it avoids Dynamic Querying.
+    relativePath = "/crm/v3/objects/companies?properties=" & propertiesParam,
+
+    // Define the number of iterations (pages) to fetch. Set this to 0 for full load, or 1/2 for limited pages.
+    maxIterations = 0,  // Set to 0 for full load, or 1/2 for limited pages
+
+    // Define the headers for authentication
+    headers = [Authorization="Bearer " & api_key],
+
     // Function to fetch a single page of data
     FetchPage = (after as text) =>
     let
-        url = if after <> "" then baseUrl & "?after=" & after 
-              else baseUrl,
-        // Adding the Authorization header with Bearer token
-        headers = [
-            Authorization = "Bearer " & apiKey
-        ],
-        Source = Json.Document(Web.Contents(url, [Headers = headers])),
+        // If after is not empty, append it to the relativePath
+        fullRelativePath = if after <> "" then 
+                            relativePath & "&after=" & after
+                          else 
+                            relativePath,
+        // Fetch data from HubSpot API using RelativePath
+        Source = Json.Document(Web.Contents(baseUrl, [RelativePath = fullRelativePath, Headers = headers])),
+        // Extract the results and the paging info from the response
         results = Source[results],
         nextLink = try Source[paging][next][after] otherwise null
     in
         [Data = results, NextAfter = nextLink],
 
-    // Recursive function to handle pagination
-    FetchAllPages = (after as text, accumulator as list) =>
+    // Function to handle pagination and limit the number of iterations
+    FetchLimitedPages = (after as text, accumulator as list, iteration as number) =>
     let
-        page = FetchPage(after),
-        currentData = page[Data],
-        nextAfter = page[NextAfter],
-        allData = List.Combine({accumulator, currentData}),
-        result = if nextAfter <> null then @FetchAllPages(nextAfter, allData) else allData
+        result = 
+            if (maxIterations = 0) or (iteration <= maxIterations) then
+                let
+                    page = FetchPage(after),
+                    currentData = page[Data],
+                    nextAfter = page[NextAfter],
+                    allData = List.Combine({accumulator, currentData}),
+                    nextResult = if nextAfter <> null then @FetchLimitedPages(nextAfter, allData, iteration + 1) else allData
+                in
+                    nextResult
+            else
+                accumulator
     in
         result,
 
     // Start the fetch process with an empty `after` parameter and an empty accumulator
-    allData = FetchAllPages("", {}),
+    allData = FetchLimitedPages("", {}, 1),  // Start iteration at 1
 
-    // Convert the list to a table
-    dataTable = Table.FromList(allData, Splitter.SplitByNothing(), null, null, ExtraValues.Error)
+    // Convert the list of records to a table
+    dataTable = Table.FromList(allData, Splitter.SplitByNothing(), null, null, ExtraValues.Error),
+
+    // Expand the 'properties' column to access individual fields
+    ExpandedProperties = Table.ExpandRecordColumn(dataTable, "Column1", 
+        {"id", "properties"}, 
+        {"id", "properties"}),
+
+    // Expand the 'properties' field to get individual columns
+    FinalData = Table.ExpandRecordColumn(ExpandedProperties, "properties", 
+        {"name", "city", "country___region", "hubspot_owner_id", "app_name", "client_segmentation", 
+         "cst__relations_manager", "closedate", "days_to_close", "delivery_agreement_signing_date", 
+         "notes_last_contacted", "hs_lead_status", "lifecyclestage", "numberofemployees", 
+         "number_of_locations", "prototype_made", "sales_status", "website", "industry"},
+        {"name", "city", "country___region", "hubspot_owner_id", "app_name", "client_segmentation", 
+         "cst__relations_manager", "closedate", "days_to_close", "delivery_agreement_signing_date", 
+         "notes_last_contacted", "hs_lead_status", "lifecyclestage", "numberofemployees", 
+         "number_of_locations", "prototype_made", "sales_status", "website", "industry"})
 in
-    dataTable
+    FinalData
